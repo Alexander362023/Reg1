@@ -1,26 +1,28 @@
-import re
-from pprint import pprint
-## Читаем адресную книгу в формате CSV в список contacts_list:
-import csv
-
-with open("Desktop/Сценарии пробники/регуляторы_данные.csv", encoding='utf=8') as f:
-  rows = csv.reader(f, delimiter=",")
-  contacts_list = list(rows)
-pprint(contacts_list)
-
-
-pattern = re.compile(r'(\+7|8)\s*\(*(495)\)*\s*\-*(\d{3})[\-]*(\d{2})[\-]*(\d+)\s*(\(*\доб*\.\s*\d*\)*)?')  
-subst_pattern= r'+7(\2)\3-\4-\5 \6'
-result = pattern.sub(subst_pattern, contacts_list)
-print(result)
-
-
-# 2. Сохраните получившиеся данные в другой файл.
-# Код для записи файла в формате CSV:
-with open("phonebook.csv", "w", encoding='utf=8') as f:
-  datawriter = csv.writer(f, delimiter=',')
-  
-## Вместо contacts_list подставьте свой список:
-  cont =[]
-  datawriter.writerows(cont) 
-pprint(cont)
+import json 
+import requests 
+import bs4
+import fake_headers 
+from pprint import pprint 
+headers_gen = fake_headers.Headers(browser='chrome', os='win') 
+response = requests.get(url='https://spb.hh.ru/search/vacancy?text=python&area=1&area=2', headers=headers_gen.generate())
+html_data = response.text 
+soup = bs4.BeautifulSoup(html_data, 'lxml') 
+article_full = soup.find_all('div', class_='serp-item')
+keywords = ['Flask', 'Django'] 
+parsed_data = [] 
+for article_tag in article_full: name_of_vacancy = article_tag.find('a').text 
+# Название вакансии
+href = article_tag.find('a', class_='serp-item__title')['href'] 
+# Ссылка на вакансию
+name_of_company = article_tag.find('a', class_='bloko-link bloko-link_kind-tertiary').text
+ # Название компании 
+name_of_city = article_tag.find('div', {'data-qa':'vacancy-serp__vacancy-address'}).text 
+# Название города 
+money = article_tag.find('span', class_='bloko-header-section-2') 
+if money: money = money.text
+else: money = 'Не указана'
+parsed_href = requests.get(url=href, headers=headers_gen.generate()) 
+html_parsed_href = parsed_href.text 
+if 'Django' or 'Flask' in html_parsed_href: parsed_data.append({ "Название вакансии": name_of_vacancy, "Ссылка на вакансию": href, "Название компании": name_of_company, "Название города": name_of_city, "Зарплата": money}) 
+with open('parsed_vacancies1.json', 'w', encoding='utf-8') as file: json.dump(parsed_data, file, ensure_ascii=False) 
+pprint(parsed_data)
